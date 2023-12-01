@@ -3,7 +3,7 @@ import numpy as np
 root_size = 2
 
 G = 1
-theta = 1
+theta = 0.5
 dt = 0.1
 
 class Node:
@@ -76,22 +76,45 @@ class Node:
                 return G * particle[6] * self.mass * r / r_norm ** 3
             return 0
 
+    # @classmethod
+    # def collision_detection(cls, particle1, particle2):
+    #     dx = particle1[:3] - particle2[:3]
+    #     dv = particle1[3:6] - particle2[3:6]
+    #     dv_norm_squared = np.dot(dv, dv)
+    #     dx_norm_squared = np.dot(dx, dx)
+    #     radii_sum_squared = (particle1[7] + particle2[7]) ** 2
+    #     dxdv = np.dot(dx, dv)
+    #     discriminant = dxdv ** 2 - dx_norm_squared * dv_norm_squared + radii_sum_squared * dv_norm_squared
+    #     if discriminant >= 0:
+    #         sqrt_discriminant = np.sqrt(discriminant)
+    #         t12 = (-2 * dxdv - 2 * sqrt_discriminant) / dv_norm_squared
+    #         if 0 < t12 < dt:
+    #             print(True)
+    #             print(t12)
+    #             print("COLLISION")
     @classmethod
     def collision_detection(cls, particle1, particle2):
         dx = particle1[:3] - particle2[:3]
         dv = particle1[3:6] - particle2[3:6]
-        dv_norm_squared = np.dot(dv, dv)
+
         dx_norm_squared = np.dot(dx, dx)
-        radii_sum_squared = (particle1[7] + particle2[7]) ** 2
+        dv_norm_squared = np.dot(dv, dv)
+
+        radii_sum_squared = (particle1[7]**2 + particle2[7]**2)
         dxdv = np.dot(dx, dv)
         discriminant = dxdv ** 2 - dx_norm_squared * dv_norm_squared + radii_sum_squared * dv_norm_squared
-        if discriminant >= 0:
-            sqrt_discriminant = np.sqrt(discriminant)
-            t12 = (-2 * dxdv - 2 * sqrt_discriminant) / dv_norm_squared
-            if 0 < t12 < dt:
-                print(True)
-                print(t12)
-                print("COLLISION")
+
+        if discriminant < 0:
+            return  # No collision possible, exit early
+
+        sqrt_discriminant = np.sqrt(discriminant)
+        t12 = (-2 * dxdv - 2 * sqrt_discriminant) / dv_norm_squared
+        print(t12)
+        if t12 <= 0 or t12 >= dt:
+            return  # No collision within the time step, exit early
+
+        print(t12)
+        print("COLLISION")
 
     @classmethod
     def create_tree(cls, particles):

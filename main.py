@@ -3,11 +3,17 @@ from barnes_hut import Node
 from multiprocessing import Pool
 import numpy as np
 
+
 def calculate_forces(particle, root):
     force = root.get_force_with_particle(particle)
     force += get_central_force(particle)
     return force
-N_particles = 5000
+
+def parallel_calculation(particle_root_pair):
+    return calculate_forces(*particle_root_pair)
+
+
+N_particles = 1000
 N_dimensions = 3
 
 # Constants
@@ -29,8 +35,8 @@ G_scaled = 1
 # Initialize the particles
 particles = np.zeros((N_particles, 8))
 disk_thickness = 0
-min_radius = 0.5
-max_radius = 1
+min_radius = 0.3
+max_radius = 0.4
 # Generate random radii and angles for a circular disk
 radii = np.random.uniform(min_radius, max_radius, N_particles)
 angles = np.random.uniform(0, 2 * np.pi, N_particles)
@@ -41,8 +47,8 @@ particles[:, 1] = radii * np.sin(angles)  # y-coordinate
 # For a flat disk, set z-coordinate to 0 or a small value
 particles[:, 2] = np.random.uniform(-disk_thickness, disk_thickness, N_particles)
 
-particles[:, 6] = earth_mass / mass_scale
-particles[:, 7] = 6371e3 / AU
+particles[:, 6] = earth_mass / mass_scale / 1000
+particles[:, 7] = 6371e3 / AU / 100
 
 normal_vector = np.array([0, 0, 1])
 
@@ -82,35 +88,42 @@ energy_history = []
 
 def main():
     root = Node.create_tree(particles)
-    with Pool() as pool:
-        initial_forces = np.array(pool.starmap(calculate_forces, [(particle, root) for particle in particles]))
-    half_step_velocities = particles[:, N_dimensions:2 * N_dimensions] + 0.5 * dt * initial_forces / particles[:, 6][:,
-                                                                                                     np.newaxis]
-    global t
-    for _ in range(1000):
-        # Update positions using half-step velocities
-        particles[:, :N_dimensions] += half_step_velocities * dt
 
-        root = Node.create_tree(particles)
+    # Create the Pool with a fixed number of workers
+    with Pool(processes=10) as pool:
+        # Initial forces calculation
+        initial_force_args = [(particle, root) for particle in particles]
+        initial_forces = np.array(pool.starmap(calculate_forces, initial_force_args))
 
-        # Parallel processing
-        with Pool() as pool:
-            forces = np.array(pool.starmap(calculate_forces, [(particle, root) for particle in particles]))
+        half_step_velocities = particles[:, N_dimensions:2 * N_dimensions] + 0.5 * dt * initial_forces / particles[:,
+                                                                                                         6][:,
+                                                                                                         np.newaxis]
 
-        # Update velocities from half-step to next half-step
-        half_step_velocities += forces * dt / particles[:, 6][:, np.newaxis]
-
-        t += dt
-
-        if _ % 1 == 0:
+        global t
+        for _ in range(500):
             time = datetime.timedelta(seconds=t * time_scale)
+            print(f"N: {_}, Time: {time}, Position: {particles[0, :N_dimensions]}")
+            pos_history.append(particles[:, :N_dimensions].copy())
+            # Update positions using half-step velocities
+            particles[:, :N_dimensions] += half_step_velocities * dt
+
+            root = Node.create_tree(particles)
+
+            # Batch processing for forces
+            batched_particles = [(particle, root) for particle in particles]
+            forces = np.array(pool.starmap(calculate_forces, batched_particles))
+
+            # Update velocities from half-step to next half-step
+            half_step_velocities += forces * dt / particles[:, 6][:, np.newaxis]
+
+            t += dt
             #KE = np.sum(0.5 * particles[:, 6] * np.linalg.norm(particles[:, N_dimensions:2 * N_dimensions], axis=1) ** 2)
             #PE = calculate_potential_energy(particles)
             #E = KE + PE
             #energy_history.append(E)
             #print(f"Time: {time}, Position: {particles[0, :N_dimensions]}, E: {E}")
-            print(f"N: {_}, Time: {time}, Position: {particles[0, :N_dimensions]}")
-            pos_history.append(particles[:, :N_dimensions].copy())
+
+
 
     np.save("pos_history", pos_history)
 

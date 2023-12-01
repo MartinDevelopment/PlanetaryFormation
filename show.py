@@ -43,5 +43,5 @@ for i in range(np.size(particles, 0)):
     pygame.display.flip()
 
     # Cap the frame rate
-    clock.tick(10)
+    clock.tick(30)
 pygame.quit()

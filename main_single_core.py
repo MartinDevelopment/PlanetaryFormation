@@ -2,7 +2,7 @@ import numpy as np
 import datetime
 from barnes_hut import Node  # Assuming this is an optimized implementation
 
-N_particles = 5000
+N_particles = 100
 N_dimensions = 3
 
 # Constants
@@ -24,8 +24,8 @@ G_scaled = 1
 # Initialize the particles
 particles = np.zeros((N_particles, 8))
 disk_thickness = 0
-min_radius = 0.5
-max_radius = 1
+min_radius = 0.3
+max_radius = 0.4
 # Generate random radii and angles for a circular disk
 radii = np.random.uniform(min_radius, max_radius, N_particles)
 angles = np.random.uniform(0, 2 * np.pi, N_particles)
@@ -36,8 +36,8 @@ particles[:, 1] = radii * np.sin(angles)  # y-coordinate
 # For a flat disk, set z-coordinate to 0 or a small value
 particles[:, 2] = np.random.uniform(-disk_thickness, disk_thickness, N_particles)
 
-particles[:, 6] = np.random.uniform(earth_mass/10,5*earth_mass) / mass_scale
-particles[:, 7] = 6371e3 / AU
+particles[:, 6] = earth_mass / mass_scale / 1000
+particles[:, 7] = 6371e3 / AU /100
 
 normal_vector = np.array([0, 0, 1])
 
@@ -83,7 +83,7 @@ for idx, particle in enumerate(particles):
 half_step_velocities = particles[:, N_dimensions:2 * N_dimensions] + 0.5 * dt * initial_forces / particles[:, 6][:, np.newaxis]
 
 
-for _ in range(10000):
+for _ in range(500):
     # Update positions using half-step velocities
     particles[:, :N_dimensions] += half_step_velocities * dt
 
